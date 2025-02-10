@@ -1,0 +1,67 @@
+[
+    {
+      "id": 1,
+      "name": "Straight Leg Jeans",
+      "supplier": "Acne Studios",
+      "price": 30,
+      "stock": 2,
+      "image": "Acne_Studios_Jeans.png"
+    },
+    {
+      "id": 2,
+      "name": "Double Layer Shirt",
+      "supplier": "Acne Studios",
+      "price": 79.99,
+      "stock": 25,
+      "image": "Acne_Studios_LS.png"
+    },
+    {
+        "id": 3,
+        "name": "Cardigan",
+        "supplier": "Ami Paris",
+        "price": 45,
+        "stock": 10,
+        "image": "Ami_Paris_Cardigan.png"
+      },
+      {
+        "id": 4,
+        "name": "Bowling Shirt",
+        "supplier": "CHERRY LA",
+        "price": 29.99,
+        "stock": 7,
+        "image": "BOWLING_SHIRT_CREAM.png"
+      },
+      {
+        "id": 5,
+        "name": "Cherry Motor Bowler Shirt",
+        "supplier": "CHERRY LA",
+        "price": 35,
+        "stock": 60,
+        "image": "CHRYBowlerShirtBack.png"
+      },
+      {
+        "id": 6,
+        "name": "Trucker Hat",
+        "supplier": "CHERRY LA",
+        "price": 19.99,
+        "stock": 3,
+        "image": "CHRYF24BlackHllywoodFront.png"
+      },
+      {
+        "id": 7,
+        "name": "Workwear Jacket",
+        "supplier": "CHERRY LA",
+        "price": 75,
+        "stock": 80,
+        "image": "CHRYF24BlackHllywoodFront.png"
+      },
+      {
+        "id": 8,
+        "name": "Double Layer Shirt",
+        "supplier": "Acne Studios",
+        "price": 79.99,
+        "stock": 5,
+        "image": "Acne_Studios_LS.png"
+      }
+  ]
+  
