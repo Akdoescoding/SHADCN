@@ -1,187 +1,143 @@
-from flask import Flask, request, jsonify, session, send_from_directory
-from flask_sqlalchemy import SQLAlchemy
-from flask_bcrypt import Bcrypt
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from flask_cors import CORS
 import os
+import pymysql
+from flask import Flask, request, jsonify, send_from_directory
+from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
+from flask_bcrypt import Bcrypt
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
+# ✅ Initialize Flask App
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
 
-# Configure database and secret key
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
-app.config['SECRET_KEY'] = 'your_secret_key'
-app.config['SESSION_PERMANENT'] = False
-app.config['SESSION_TYPE'] = 'filesystem'
+# ✅ MySQL Configuration
+app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:Waves1234_@localhost/inventory_db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["JWT_SECRET_KEY"] = "supersecretkey"
 
+# ✅ Initialize Extensions
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
+jwt = JWTManager(app)
+CORS(app, resources={r"/*": {"origins": "*"}})  # 🔥 Allow Frontend Access
 
-# -------------------------------
-#        USER MODEL
-# -------------------------------
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(256), nullable=False)
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
-# -------------------------------
-#        PRODUCT MODEL
-# -------------------------------
+# ✅ Product Model (Using `product` Table)
 class Product(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(150), nullable=False)
+    __tablename__ = 'product'  # ✅ Matches MySQL
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    name = db.Column(db.String(150), unique=True, nullable=False)  # 🔥 Unique product names
     supplier = db.Column(db.String(150), nullable=False)
     price = db.Column(db.Float, nullable=False)
     stock = db.Column(db.Integer, nullable=False)
-    image = db.Column(db.String(255), nullable=True)  # Store image filename
+    image = db.Column(db.String(255), nullable=True, default="default.png")  # ✅ Default image
 
-# -------------------------------
-#        CREATE TABLES
-# -------------------------------
-def create_tables():
-    """Create database tables inside an application context."""
-    with app.app_context():
+# ✅ Create Tables (Ensure Table Exists)
+with app.app_context():
+    try:
         db.create_all()
-        print("Database tables created successfully.")
+        print("✅ MySQL Database Tables Created Successfully!")
+    except Exception as e:
+        print("❌ Database Connection Failed:", str(e))
 
-create_tables()
+# ✅ Serve Static Images
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    """ Serve product images from the static folder. """
+    try:
+        return send_from_directory('static', filename)
+    except Exception:
+        return jsonify({"error": "Image not found"}), 404
 
-# -------------------------------
-#        AUTHENTICATION ROUTES
-# -------------------------------
-@app.route('/register', methods=['POST'])
-def register():
-    data = request.json
-    existing_user = User.query.filter_by(username=data['username']).first()
-
-    if existing_user:
-        return jsonify({"message": "Username already exists."}), 400
-
-    hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
-    new_user = User(username=data['username'], password=hashed_password)
-    db.session.add(new_user)
-    db.session.commit()
-
-    return jsonify({"message": "User registered successfully"}), 201
-
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.json
-    user = User.query.filter_by(username=data['username']).first()
-
-    if user and bcrypt.check_password_hash(user.password, data['password']):
-        login_user(user)
-        session['user_id'] = user.id
-        return jsonify({"message": "Login successful"}), 200
-
-    return jsonify({"message": "Invalid credentials"}), 401
-
-@app.route('/logout', methods=['POST'])
-@login_required
-def logout():
-    logout_user()
-    session.pop('user_id', None)
-    return jsonify({"message": "Logged out successfully"}), 200
-
-@app.route('/current-user', methods=['GET'])
-@login_required
-def get_current_user():
-    return jsonify({"username": current_user.username}), 200
-
-# -------------------------------
-#        PRODUCT ROUTES
-# -------------------------------
-@app.route('/products', methods=['GET'])
+# ✅ Fetch All Products (Public API)
+@app.route("/product", methods=["GET"])
 def get_products():
-    """Fetch all products"""
-    products = Product.query.all()
-    products_list = [{
-        "id": p.id,
-        "name": p.name,
-        "supplier": p.supplier,
-        "price": p.price,
-        "stock": p.stock,
-        "image": f"/static/{p.image}" if p.image else None  # Return full path for frontend
-    } for p in products]
-    
-    return jsonify(products_list), 200
+    """ Fetch all products from the database. """
+    try:
+        products = Product.query.all()
+        products_list = [{
+            "id": p.id,
+            "name": p.name,
+            "supplier": p.supplier,
+            "price": p.price,
+            "stock": p.stock,
+            "image": p.image or "default.png"
+        } for p in products]
+        return jsonify(products_list), 200
+    except Exception as e:
+        return jsonify({"message": "Error fetching products", "error": str(e)}), 500
 
-@app.route('/products', methods=['POST'])
-@login_required
+# ✅ Add a New Product (Admin Only)
+@app.route("/product", methods=["POST"])
+@jwt_required()
 def add_product():
-    if current_user.is_authenticated:
-        data = request.json
+    """ Admins can add new products. """
+    user = get_jwt_identity()
+    if user.get("role") != "admin":
+        return jsonify({"message": "Unauthorized"}), 403
+
+    try:
+        data = request.get_json()
+        if not all(k in data for k in ["name", "supplier", "price", "stock"]):
+            return jsonify({"error": "Missing required fields"}), 400
+
         new_product = Product(
-            name=data['name'],
-            supplier=data['supplier'],
-            price=data['price'],
-            stock=data['stock'],
-            image=data['image']  # Expect frontend to send image filename
+            name=data["name"],
+            supplier=data["supplier"],
+            price=float(data["price"]),
+            stock=int(data["stock"]),
+            image=data.get("image", "default.png")
         )
+
         db.session.add(new_product)
         db.session.commit()
         return jsonify({"message": "Product added successfully!"}), 201
-    return jsonify({"message": "Unauthorized"}), 403
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error adding product", "error": str(e)}), 500
 
-@app.route('/products/<int:product_id>', methods=['PUT'])
-@login_required
-def update_product(product_id):
-    product = Product.query.get(product_id)
-    if product:
-        data = request.json
-        product.name = data.get('name', product.name)
-        product.supplier = data.get('supplier', product.supplier)
-        product.price = data.get('price', product.price)
-        product.stock = data.get('stock', product.stock)
-        product.image = data.get('image', product.image)
+# ✅ Update Product Stock (Any Logged-In User Can Update Stock)
+@app.route("/product/<int:product_id>", methods=["PUT"])
+@jwt_required()
+def update_stock(product_id):
+    """ Allow users to update stock. """
+    try:
+        data = request.get_json()
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({"message": "Product not found"}), 404
+
+        product.stock = int(data["stock"])
         db.session.commit()
-        return jsonify({"message": "Product updated successfully!"}), 200
-    return jsonify({"message": "Product not found"}), 404
+        return jsonify({"message": "Stock updated successfully!", "new_stock": product.stock}), 200
+    except Exception as e:
+        return jsonify({"message": "Error updating stock", "error": str(e)}), 500
 
-@app.route('/products/<int:product_id>', methods=['DELETE'])
-@login_required
+# ✅ Delete a Product (Admin Only)
+@app.route("/product/<int:product_id>", methods=["DELETE"])
+@jwt_required()
 def delete_product(product_id):
-    product = Product.query.get(product_id)
-    if product:
+    """ Only admins can delete products. """
+    user = get_jwt_identity()
+    if user.get("role") != "admin":
+        return jsonify({"message": "Unauthorized"}), 403
+
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({"message": "Product not found"}), 404
+
         db.session.delete(product)
         db.session.commit()
         return jsonify({"message": "Product deleted successfully!"}), 200
-    return jsonify({"message": "Product not found"}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error deleting product", "error": str(e)}), 500
 
-@app.route('/add-sample-products', methods=['POST'])
-def add_sample_products():
-    """Adds some sample products for testing."""
-    with app.app_context():
-        sample_products = [
-            Product(name="T-Shirt", supplier="Nike", price=19.99, stock=50, image="tshirt.jpg"),
-            Product(name="Laptop", supplier="Dell", price=599.99, stock=10, image="laptop.jpg"),
-            Product(name="Watch", supplier="Casio", price=49.99, stock=30, image="watch.jpg")
-        ]
-        db.session.add_all(sample_products)
-        db.session.commit()
-        return jsonify({"message": "Sample products added!"}), 201
-
-# -------------------------------
-#        SERVE STATIC IMAGES
-# -------------------------------
-@app.route('/static/<path:filename>')
-def serve_image(filename):
-    """Serve static images from the backend."""
-    return send_from_directory(os.path.join(app.root_path, "static"), filename)
-
-@app.route('/')
+# ✅ Home Route (API Root)
+@app.route("/")
 def home():
-    return "Flask Backend is Running!"
+    return jsonify({"message": "Welcome to the Inventory API. Use /product to fetch data."}), 200
 
-# -------------------------------
-#        RUN THE APP
-# -------------------------------
-if __name__ == '__main__':
+# ✅ Run Flask App
+if __name__ == "__main__":
+    print("Available Routes:", app.url_map)  # ✅ Print available routes
     app.run(debug=True, port=5001)

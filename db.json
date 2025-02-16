@@ -1,8 +1,21 @@
 {
     "products": [
-      { "id": 1, "name": "Star Quilted Work Jacket", "supplier": "CHERRY LA", "price": 50, "stock": 2, "image": "jacket.png" },
-      { "id": 2, "name": "Cherry Motor Bowling Shirt", "supplier": "CHERRY LA", "price": 30, "stock": 5, "image": "shirt.png" },
-      { "id": 3, "name": "Hollywood Trucker Hat", "supplier": "CHERRY LA", "price": 15, "stock": 20, "image": "hat.png" }
+      {
+        "id": 1,
+        "name": "Star Quilted Work Jacket",
+        "supplier": "CHERRY LA",
+        "price": 50,
+        "stock": 2,
+        "image": "CL_Jacket.png"
+      },
+      {
+        "id": 2,
+        "name": "Cherry Motor Bowling Shirt",
+        "supplier": "CHERRY LA",
+        "price": 30,
+        "stock": 5,
+        "image": "BOWLING_SHIRT_CREAM.png"
+      }
     ]
   }
   
