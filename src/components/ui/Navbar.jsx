@@ -1,5 +1,6 @@
 import React from "react";
-import { FaSearch, FaSignOutAlt } from "react-icons/fa"; // ✅ Import Logout Icon
+import { FaSearch, FaSignOutAlt } from "react-icons/fa"; // Import Logout Icon
+import { Link } from "react-router-dom"; // Import Link from React Router
 
 const Navbar = ({ onLogout }) => {
   return (
@@ -19,7 +20,7 @@ const Navbar = ({ onLogout }) => {
           <FaSearch className="absolute top-3 right-4 text-gray-500 text-lg" />
         </div>
 
-        {/* 🔴 Clear Logout Button (Now has text & icon) */}
+        {/* Logout Button */}
         <button
           onClick={onLogout}
           className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full transition"
@@ -31,11 +32,11 @@ const Navbar = ({ onLogout }) => {
 
       {/* Bottom Section - Categories */}
       <div className="w-full flex justify-around text-lg font-semibold py-2">
-        <a href="#" className="text-white hover:text-gray-400 transition">Electronics</a>
-        <a href="#" className="text-white hover:text-gray-400 transition">Clothes</a>
-        <a href="#" className="text-white hover:text-gray-400 transition">Health</a>
-        <a href="#" className="text-white hover:text-gray-400 transition">Books</a>
-        <a href="#" className="text-white hover:text-gray-400 transition">Grocery</a>
+        <Link to="/electronics" className="text-white hover:text-gray-400 transition">Electronics</Link>
+        <Link to="/clothes" className="text-white hover:text-gray-400 transition">Clothes</Link>
+        <Link to="/health" className="text-white hover:text-gray-400 transition">Health</Link>
+        <Link to="/books" className="text-white hover:text-gray-400 transition">Books</Link>
+        <Link to="/grocery" className="text-white hover:text-gray-400 transition">Grocery</Link>
       </div>
     </nav>
   );

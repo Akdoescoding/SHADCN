@@ -6,31 +6,33 @@ from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
-# ✅ Initialize Flask App
+# Initialize Flask App
 app = Flask(__name__)
 
-# ✅ MySQL Configuration
+# MySQL Configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:Waves1234_@localhost/inventory_db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_SECRET_KEY"] = "supersecretkey"
 
-# ✅ Initialize Extensions
+# Initialize Extensions
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
-CORS(app, resources={r"/*": {"origins": "*"}})  # 🔥 Allow Frontend Access
 
-# ✅ Product Model (Using `product` Table)
+# Fix CORS Issues (Allow Frontend to Access API)
+CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+
+# Product Model (Using `product` Table)
 class Product(db.Model):
-    __tablename__ = 'product'  # ✅ Matches MySQL
+    __tablename__ = 'product'  
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(150), unique=True, nullable=False)  # 🔥 Unique product names
+    name = db.Column(db.String(150), unique=True, nullable=False)
     supplier = db.Column(db.String(150), nullable=False)
     price = db.Column(db.Float, nullable=False)
     stock = db.Column(db.Integer, nullable=False)
-    image = db.Column(db.String(255), nullable=True, default="default.png")  # ✅ Default image
+    image = db.Column(db.String(255), nullable=True, default="default.png")
 
-# ✅ Create Tables (Ensure Table Exists)
+# Create Tables (Ensure Table Exists)
 with app.app_context():
     try:
         db.create_all()
@@ -38,21 +40,22 @@ with app.app_context():
     except Exception as e:
         print("❌ Database Connection Failed:", str(e))
 
-# ✅ Serve Static Images
-@app.route('/static/<path:filename>')
-def serve_static(filename):
-    """ Serve product images from the static folder. """
+# Serve Static Images
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
     try:
-        return send_from_directory('static', filename)
+        return send_from_directory('public/assets', filename)
     except Exception:
         return jsonify({"error": "Image not found"}), 404
 
-# ✅ Fetch All Products (Public API)
 @app.route("/product", methods=["GET"])
 def get_products():
     """ Fetch all products from the database. """
     try:
         products = Product.query.all()
+        if not products:
+            return jsonify({"message": "No products found."}), 404  # Handle empty database
+
         products_list = [{
             "id": p.id,
             "name": p.name,
@@ -63,13 +66,13 @@ def get_products():
         } for p in products]
         return jsonify(products_list), 200
     except Exception as e:
+        print("❌ Error fetching products:", str(e))  # Debugging
         return jsonify({"message": "Error fetching products", "error": str(e)}), 500
 
-# ✅ Add a New Product (Admin Only)
+# Add a New Product (Admin Only)
 @app.route("/product", methods=["POST"])
 @jwt_required()
 def add_product():
-    """ Admins can add new products. """
     user = get_jwt_identity()
     if user.get("role") != "admin":
         return jsonify({"message": "Unauthorized"}), 403
@@ -94,11 +97,10 @@ def add_product():
         db.session.rollback()
         return jsonify({"message": "Error adding product", "error": str(e)}), 500
 
-# ✅ Update Product Stock (Any Logged-In User Can Update Stock)
+# Update Product Stock
 @app.route("/product/<int:product_id>", methods=["PUT"])
 @jwt_required()
 def update_stock(product_id):
-    """ Allow users to update stock. """
     try:
         data = request.get_json()
         product = Product.query.get(product_id)
@@ -111,11 +113,10 @@ def update_stock(product_id):
     except Exception as e:
         return jsonify({"message": "Error updating stock", "error": str(e)}), 500
 
-# ✅ Delete a Product (Admin Only)
+# Delete a Product (Admin Only)
 @app.route("/product/<int:product_id>", methods=["DELETE"])
 @jwt_required()
 def delete_product(product_id):
-    """ Only admins can delete products. """
     user = get_jwt_identity()
     if user.get("role") != "admin":
         return jsonify({"message": "Unauthorized"}), 403
@@ -132,12 +133,21 @@ def delete_product(product_id):
         db.session.rollback()
         return jsonify({"message": "Error deleting product", "error": str(e)}), 500
 
-# ✅ Home Route (API Root)
+# Home Route
 @app.route("/")
 def home():
     return jsonify({"message": "Welcome to the Inventory API. Use /product to fetch data."}), 200
 
-# ✅ Run Flask App
+# Fix CORS Headers (Final Fix)
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "http://localhost:5173"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
+
+# Run Flask App
 if __name__ == "__main__":
-    print("Available Routes:", app.url_map)  # ✅ Print available routes
+    print("Available Routes:", app.url_map)
     app.run(debug=True, port=5001)

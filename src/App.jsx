@@ -6,17 +6,28 @@ import Navbar from "./components/ui/Navbar";
 import Sidebar from "./components/ui/Sidebar";
 import ProductCard from "./components/ui/ProductCard";
 import Inventory from "./components/ui/Inventory";
+import StockModal from "./components/ui/StockModal";
+import ProductDetailsModal from "./components/ui/ProductDetailsModal"; // Ensure this import is correct
 
-const API_URL = "http://127.0.0.1:5001"; // ✅ Centralized API URL
+const API_URL = "http://127.0.0.1:5001"; // Centralized API URL
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
-  const [product, setProduct] = useState([]); // ✅ Ensure correct state naming
+  const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
-  // ✅ Fetch Product & Persist Authentication
+  // Dropdown States
+  const [selectedSort, setSelectedSort] = useState("");
+  const [selectedSuppliers, setSelectedSuppliers] = useState([]);
+  const [selectedAvailability, setSelectedAvailability] = useState("");
+
+  // Fetch Product & Persist Authentication
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedRole = localStorage.getItem("role");
@@ -26,79 +37,56 @@ const App = () => {
       setUserRole(storedRole);
     }
 
-    fetchProduct();
+    fetchProducts();
   }, []);
 
-  const fetchProduct = async () => {
+  const fetchProducts = async () => {
     setLoading(true);
     try {
-      console.log("🚀 fetchProduct() is running");
-
-      const response = await fetch(`${API_URL}/product`, {  // ✅ FIXED
+      const response = await fetch(`${API_URL}/product`, { 
         method: "GET",
         credentials: "include",
       });
-  
-      if (!response.ok) throw new Error("Failed to fetch product");
-  
+
+      if (!response.ok) throw new Error("Failed to fetch products");
+
       const data = await response.json();
-      console.log("✅ Fetched product:", data);
-      setProduct(data);
+      setProducts(data);
+      setFilteredProducts(data); // Initially, all products are displayed
     } catch (error) {
-      console.error("❌ Error fetching product:", error);
+      console.error("Error fetching products:", error);
     } finally {
       setLoading(false);
     }
   };
-  
 
-  // ✅ Handle Login
-  const handleLogin = async (username, password) => {
-    try {
-      const response = await fetch(`${API_URL}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ username, password }),
-      });
+  // Filter Products Based on Dropdown Selections
+  useEffect(() => {
+    let filtered = [...products];
 
-      const data = await response.json();
-      if (response.ok) {
-        setIsAuthenticated(true);
-        setUserRole(data.role);
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.role);
-        fetchProduct(); // ✅ Fetch latest product after login
-      } else {
-        alert("❌ Login failed: " + data.message);
-      }
-    } catch (error) {
-      alert("❌ Error connecting to the server.");
+    // Apply Sorting
+    if (selectedSort === "asc") {
+      filtered.sort((a, b) => a.stock - b.stock);
+    } else if (selectedSort === "desc") {
+      filtered.sort((a, b) => b.stock - a.stock);
     }
-  };
 
-  // ✅ Handle Registration
-  const handleRegister = async (username, password, role = "user") => {
-    try {
-      const response = await fetch(`${API_URL}/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, role }),
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        alert("✅ Registration successful! Please log in.");
-        setIsRegistering(false);
-      } else {
-        alert("❌ Registration failed: " + data.message);
-      }
-    } catch (error) {
-      alert("❌ Error connecting to the server.");
+    // Filter by Supplier
+    if (selectedSuppliers.length > 0) {
+      filtered = filtered.filter(prod => selectedSuppliers.includes(prod.supplier));
     }
-  };
 
-  // ✅ Handle Logout
+    // Filter by Availability
+    if (selectedAvailability === "in_stock") {
+      filtered = filtered.filter(prod => prod.stock > 0);
+    } else if (selectedAvailability === "out_of_stock") {
+      filtered = filtered.filter(prod => prod.stock === 0);
+    }
+
+    setFilteredProducts(filtered);
+  }, [selectedSort, selectedSuppliers, selectedAvailability, products]);
+
+  // Handle Logout
   const handleLogout = async () => {
     try {
       await fetch(`${API_URL}/logout`, { method: "POST", credentials: "include" });
@@ -107,97 +95,130 @@ const App = () => {
       localStorage.removeItem("token");
       localStorage.removeItem("role");
     } catch (error) {
-      alert("❌ Error logging out.");
+      alert("Error logging out.");
     }
   };
 
-  // ✅ Handle Stock Update (Admin Only)
-  const handleUpdateStock = async (productId) => {
-    if (userRole !== "admin") {
-      alert("❌ Unauthorized! Only admins can update stock.");
-      return;
-    }
-
-    const newStock = prompt("Enter new stock quantity:");
-    if (newStock === null || isNaN(newStock) || parseInt(newStock) < 0) {
-      alert("❌ Invalid stock value. Please enter a valid number.");
-      return;
-    }
-
+  // Handle Stock Update
+  const handleUpdateStock = async (productId, newStock) => {
     try {
       const response = await fetch(`${API_URL}/product/${productId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ stock: parseInt(newStock) }),
+        body: JSON.stringify({ stock: newStock }),
       });
 
       if (response.ok) {
-        setProduct((prevProduct) =>
-          prevProduct.map((prod) =>
-            prod.id === productId ? { ...prod, stock: parseInt(newStock) } : prod
+        setProducts((prevProducts) =>
+          prevProducts.map((prod) =>
+            prod.id === productId ? { ...prod, stock: newStock } : prod
           )
         );
-        alert("✅ Stock updated successfully!");
+        setFilteredProducts((prevProducts) =>
+          prevProducts.map((prod) =>
+            prod.id === productId ? { ...prod, stock: newStock } : prod
+          )
+        );
+        alert("Stock updated successfully!");
       } else {
-        alert("❌ Failed to update stock.");
+        alert("Failed to update stock.");
       }
     } catch (error) {
-      console.error("❌ Error updating stock:", error);
-      alert("❌ Error updating stock.");
+      console.error("Error updating stock:", error);
+      alert("Error updating stock.");
     }
+  };
+
+  const openStockModal = (productId) => {
+    const product = products.find(prod => prod.id === productId);
+    setSelectedProduct(product);
+    setIsStockModalOpen(true);
+  };
+
+  const openDetailsModal = (productId) => {
+    const product = products.find(prod => prod.id === productId);
+    setSelectedProduct(product);
+    setIsDetailsModalOpen(true);
+  };
+
+  const closeStockModal = () => {
+    setSelectedProduct(null);
+    setIsStockModalOpen(false);
+  };
+
+  const closeDetailsModal = () => {
+    setSelectedProduct(null);
+    setIsDetailsModalOpen(false);
   };
 
   return (
     <div className="min-h-screen bg-white text-black">
       {!isAuthenticated ? (
         isRegistering ? (
-          <Register onRegister={handleRegister} switchToLogin={() => setIsRegistering(false)} />
+          <Register onRegister={() => setIsRegistering(false)} />
         ) : (
-          <Login onLogin={handleLogin} switchToRegister={() => setIsRegistering(true)} />
+          <Login onLogin={() => setIsAuthenticated(true)} />
         )
       ) : (
         <div className="flex flex-col min-h-screen">
-          {/* ✅ Navbar */}
+          {/* Navbar */}
           <Navbar onLogout={handleLogout} />
 
-          {/* ✅ Layout: Sidebar + Main Content */}
+          {/* Layout: Sidebar + Main Content */}
           <div className="flex">
-            {/* Sidebar */}
-            <Sidebar />
+            {/* Sidebar with Dropdowns */}
+            <Sidebar 
+              setSortOrder={setSelectedSort} 
+              setFilterBySupplier={setSelectedSuppliers} 
+              setFilterByAvailability={setSelectedAvailability} 
+            />
 
             {/* Main Content Area */}
-            <div className="flex-grow p-6 mt-16 bg-white-800 rounded-lg">
+            <div className="flex-grow p-6 mt-16 bg-white-800 rounded-lg ml-64">
               {userRole === "admin" ? (
                 <Inventory userRole={userRole} />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {loading ? (
-                    <p className="text-center text-gray-400">Loading product...</p>
-                  ) : product.length > 0 ? (
-                    product.map((prod) => {
-                      console.log("🔹 Rendering product:", prod);
-                      return (
-                        <ProductCard
-                          key={prod.id}
-                          id={prod.id}
-                          image={`${API_URL}/static/${prod.image}`} // ✅ Fix Image Path
-                          supplier={prod.supplier}
-                          name={prod.name}
-                          price={prod.price}
-                          stock={prod.stock}
-                          onUpdate={handleUpdateStock} // ✅ Pass update function
-                        />
-                      );
-                    })
+                    <p className="text-center text-gray-400">Loading products...</p>
+                  ) : filteredProducts.length > 0 ? (
+                    filteredProducts.map((prod) => (
+                      <ProductCard
+                        key={prod.id}
+                        id={prod.id}
+                        image={`${API_URL}/assets/${prod.image}`} // Ensure correct image path
+                        supplier={prod.supplier}
+                        name={prod.name}
+                        price={prod.price}
+                        stock={prod.stock}
+                        onUpdate={openStockModal} // Open stock modal on update
+                        onViewDetails={openDetailsModal} // Open details modal on view details
+                      />
+                    ))
                   ) : (
-                    <p className="text-center text-gray-400">No product available.</p>
+                    <p className="text-center text-gray-400">No products available.</p>
                   )}
                 </div>
               )}
             </div>
           </div>
         </div>
+      )}
+      {selectedProduct && (
+        <StockModal
+          isOpen={isStockModalOpen}
+          onClose={closeStockModal}
+          product={selectedProduct}
+          onUpdateStock={handleUpdateStock}
+        />
+      )}
+      {selectedProduct && (
+        <ProductDetailsModal
+          isOpen={isDetailsModalOpen}
+          onClose={closeDetailsModal}
+          product={selectedProduct}
+        />
       )}
     </div>
   );
