@@ -8,51 +8,51 @@ const Login = ({ onLogin, switchToRegister }) => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+    setError("");
 
     try {
       const response = await fetch("http://127.0.0.1:5001/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-
       const data = await response.json();
       setLoading(false);
 
       if (response.ok) {
+        // Store token and role in localStorage
         localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.role); // Store user role in local storage
-        onLogin();
+        localStorage.setItem("role", data.role);
+
+        // Tell App we're logged in
+        onLogin(data.role);
       } else {
-        setError(data.message || "❌ Login failed.");
+        setError(data.message || "Login failed");
       }
-    } catch (err) {
-      setError("❌ Error connecting to server.");
+    } catch (error) {
+      console.error("Login error:", error);
+      setError("Error connecting to server.");
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+    <div className="flex items-center justify-center min-h-screen">
       <div className="bg-white text-black p-8 rounded-lg shadow-lg w-96">
         <h2 className="text-2xl font-bold text-center">Login</h2>
         <form onSubmit={handleLogin}>
           <input
             type="text"
             placeholder="Username"
-            className="w-full p-2 mt-4 border border-gray-400 rounded-md focus:outline-none focus:border-gray-500"
+            className="w-full p-2 mt-4 border border-gray-400 rounded-md"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
-
           <input
             type="password"
             placeholder="Password"
-            className="w-full p-2 mt-4 border border-gray-400 rounded-md focus:outline-none focus:border-gray-500"
+            className="w-full p-2 mt-4 border border-gray-400 rounded-md"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -69,8 +69,11 @@ const Login = ({ onLogin, switchToRegister }) => {
         </form>
 
         <p className="mt-4 text-center text-sm">
-          Don't have an account?{" "}
-          <span className="font-bold cursor-pointer text-blue-500 hover:underline" onClick={switchToRegister}>
+          Don’t have an account?{" "}
+          <span
+            className="font-bold cursor-pointer text-blue-500 hover:underline"
+            onClick={switchToRegister}
+          >
             Register
           </span>
         </p>

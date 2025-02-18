@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/accordion";
 
 const Sidebar = ({ setSortOrder, setFilterBySupplier, setFilterByAvailability }) => {
+  // Handle adding/removing suppliers from the filter array
   const handleSupplierChange = (e) => {
     const { value, checked } = e.target;
     setFilterBySupplier((prev) => {
@@ -18,11 +19,18 @@ const Sidebar = ({ setSortOrder, setFilterBySupplier, setFilterByAvailability })
     });
   };
 
+  // Clear all filters: sort, suppliers, availability
+  const handleClearAllFilters = () => {
+    setSortOrder("");
+    setFilterBySupplier([]);
+    setFilterByAvailability("");
+  };
+
   return (
     <div className="fixed left-0 top-[130px] w-[280px] bg-white border-r border-gray-300 h-[calc(100vh-100px)] p-6 shadow-md">
       {/* Heading */}
       <h2 className="text-xl font-bold mb-4">Filter & Sort</h2>
-      <hr className="border-gray-300 mb-4" /> {/* Divider Line */}
+      <hr className="border-gray-300 mb-4" />
 
       {/* Accordion Section */}
       <Accordion type="single" collapsible className="w-full">
@@ -120,6 +128,15 @@ const Sidebar = ({ setSortOrder, setFilterBySupplier, setFilterByAvailability })
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+
+      {/* Clear All Filters Button */}
+      <button
+        type="button"
+        className="w-full p-3 bg-red-500 text-white rounded-md mt-6 hover:bg-red-600"
+        onClick={handleClearAllFilters}
+      >
+        Clear All Filters
+      </button>
     </div>
   );
 };

@@ -3,12 +3,12 @@ import React, { useState } from "react";
 const Register = ({ switchToLogin }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("user"); // Default role: "user"
+  const [role, setRole] = useState("user"); // default "user"
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e) => {
-    e.preventDefault(); // Prevent default form submission behavior
+    e.preventDefault();
     setError("");
     setLoading(true);
 
@@ -18,7 +18,7 @@ const Register = ({ switchToLogin }) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, password, role }), // Include role
+        body: JSON.stringify({ username, password, role }),
       });
 
       const data = await response.json();
@@ -44,7 +44,7 @@ const Register = ({ switchToLogin }) => {
           <input
             type="text"
             placeholder="Username"
-            className="w-full p-2 mt-4 border border-gray-400 rounded-md focus:outline-none focus:border-gray-500"
+            className="w-full p-2 mt-4 border border-gray-400 rounded-md"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
@@ -52,14 +52,13 @@ const Register = ({ switchToLogin }) => {
           <input
             type="password"
             placeholder="Password"
-            className="w-full p-2 mt-4 border border-gray-400 rounded-md focus:outline-none focus:border-gray-500"
+            className="w-full p-2 mt-4 border border-gray-400 rounded-md"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          {/* Role Selection Dropdown */}
           <select
-            className="w-full p-2 mt-4 border border-gray-400 rounded-md focus:outline-none focus:border-gray-500"
+            className="w-full p-2 mt-4 border border-gray-400 rounded-md"
             value={role}
             onChange={(e) => setRole(e.target.value)}
           >
@@ -80,7 +79,10 @@ const Register = ({ switchToLogin }) => {
 
         <p className="mt-4 text-center text-sm">
           Already have an account?{" "}
-          <span className="font-bold cursor-pointer text-blue-500 hover:underline" onClick={switchToLogin}>
+          <span
+            className="font-bold cursor-pointer text-blue-500 hover:underline"
+            onClick={switchToLogin}
+          >
             Login
           </span>
         </p>

@@ -9,7 +9,7 @@ import Inventory from "./components/ui/Inventory";
 import StockModal from "./components/ui/StockModal";
 import ProductDetailsModal from "./components/ui/ProductDetailsModal";
 
-const API_URL = "http://127.0.0.1:5001"; // Centralized API URL
+const API_URL = "http://127.0.0.1:5001";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -22,12 +22,12 @@ const App = () => {
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
-  // Dropdown States
+  // Dropdown filter states: all empty by default
   const [selectedSort, setSelectedSort] = useState("");
   const [selectedSuppliers, setSelectedSuppliers] = useState([]);
   const [selectedAvailability, setSelectedAvailability] = useState("");
 
-  // Fetch Product & Persist Authentication
+  // On mount, check localStorage for token & role, then fetch products
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedRole = localStorage.getItem("role");
@@ -35,6 +35,7 @@ const App = () => {
     if (token && storedRole) {
       setIsAuthenticated(true);
       setUserRole(storedRole);
+      console.log("User Role:", storedRole);
     }
 
     fetchProducts();
@@ -43,17 +44,16 @@ const App = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/product`, { 
+      const response = await fetch(`${API_URL}/product`, {
         method: "GET",
         credentials: "include",
       });
-
       if (!response.ok) throw new Error("Failed to fetch products");
 
       const data = await response.json();
       setProducts(data);
-      setFilteredProducts(data); // Initially, all products are displayed
-      console.log("✅ Products fetched successfully:", data);  // Debugging
+      setFilteredProducts(data); // Start with all products
+      console.log("✅ Products fetched successfully:", data);
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
@@ -61,36 +61,43 @@ const App = () => {
     }
   };
 
-  // Filter Products Based on Dropdown Selections
+  // Filter products whenever user changes sort/supplier/availability
   useEffect(() => {
     let filtered = [...products];
 
-    // Apply Sorting
+    // Sort
     if (selectedSort === "asc") {
       filtered.sort((a, b) => a.stock - b.stock);
     } else if (selectedSort === "desc") {
       filtered.sort((a, b) => b.stock - a.stock);
     }
 
-    // Filter by Supplier
+    // Filter by supplier
     if (selectedSuppliers.length > 0) {
-      filtered = filtered.filter(prod => selectedSuppliers.includes(prod.supplier));
+      filtered = filtered.filter((prod) =>
+        selectedSuppliers.includes(prod.supplier)
+      );
     }
 
-    // Filter by Availability
+    // Filter by availability
     if (selectedAvailability === "in_stock") {
-      filtered = filtered.filter(prod => prod.stock > 0);
+      filtered = filtered.filter((prod) => prod.stock > 0);
     } else if (selectedAvailability === "out_of_stock") {
-      filtered = filtered.filter(prod => prod.stock === 0);
+      filtered = filtered.filter((prod) => prod.stock === 0);
     }
 
     setFilteredProducts(filtered);
+    console.log("Filtered Products:", filtered);
   }, [selectedSort, selectedSuppliers, selectedAvailability, products]);
 
-  // Handle Logout
+  // Logout
   const handleLogout = async () => {
     try {
-      await fetch(`${API_URL}/logout`, { method: "POST", credentials: "include" });
+      // Optional: call an API logout route
+      await fetch(`${API_URL}/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
       setIsAuthenticated(false);
       setUserRole(null);
       setProducts([]);
@@ -102,9 +109,10 @@ const App = () => {
     }
   };
 
-  // Handle Stock Update
+  // Called by the StockModal after user enters new stock
   const handleUpdateStock = async (productId, newStock) => {
-    if (userRole.toLowerCase() !== "admin") {
+    // Double-check admin in frontend (the backend also enforces it)
+    if (userRole?.toLowerCase() !== "admin") {
       alert("Only admin users can update stock.");
       return;
     }
@@ -118,15 +126,12 @@ const App = () => {
       });
 
       if (response.ok) {
-        setProducts((prevProducts) =>
-          prevProducts.map((prod) =>
-            prod.id === productId ? { ...prod, stock: newStock } : prod
-          )
+        // Update state
+        setProducts((prev) =>
+          prev.map((p) => (p.id === productId ? { ...p, stock: newStock } : p))
         );
-        setFilteredProducts((prevProducts) =>
-          prevProducts.map((prod) =>
-            prod.id === productId ? { ...prod, stock: newStock } : prod
-          )
+        setFilteredProducts((prev) =>
+          prev.map((p) => (p.id === productId ? { ...p, stock: newStock } : p))
         );
         alert("Stock updated successfully!");
       } else {
@@ -138,14 +143,15 @@ const App = () => {
     }
   };
 
+  // Open/Close modals
   const openStockModal = (productId) => {
-    const product = products.find(prod => prod.id === productId);
+    const product = products.find((prod) => prod.id === productId);
     setSelectedProduct(product);
     setIsStockModalOpen(true);
   };
 
   const openDetailsModal = (productId) => {
-    const product = products.find(prod => prod.id === productId);
+    const product = products.find((prod) => prod.id === productId);
     setSelectedProduct(product);
     setIsDetailsModalOpen(true);
   };
@@ -160,60 +166,64 @@ const App = () => {
     setIsDetailsModalOpen(false);
   };
 
+  // Called by Login.jsx after successful login
+  const handleLogin = (role) => {
+    setIsAuthenticated(true);
+    setUserRole(role);
+    console.log("Logged in as:", role);
+  };
+
   return (
     <div className="min-h-screen bg-white text-black">
+      {/* If not logged in, show Register or Login */}
       {!isAuthenticated ? (
         isRegistering ? (
           <Register switchToLogin={() => setIsRegistering(false)} />
         ) : (
-          <Login onLogin={() => setIsAuthenticated(true)} switchToRegister={() => setIsRegistering(true)} />
+          <Login onLogin={handleLogin} switchToRegister={() => setIsRegistering(true)} />
         )
       ) : (
+        // Otherwise, show main app
         <div className="flex flex-col min-h-screen">
-          {/* Navbar */}
           <Navbar onLogout={handleLogout} />
 
-          {/* Layout: Sidebar + Main Content */}
           <div className="flex">
-            {/* Sidebar with Dropdowns */}
-            <Sidebar 
-              setSortOrder={setSelectedSort} 
-              setFilterBySupplier={setSelectedSuppliers} 
-              setFilterByAvailability={setSelectedAvailability} 
+            {/* Optional Sidebar with filters */}
+            <Sidebar
+              setSortOrder={setSelectedSort}
+              setFilterBySupplier={setSelectedSuppliers}
+              setFilterByAvailability={setSelectedAvailability}
             />
 
-            {/* Main Content Area */}
             <div className="flex-grow p-6 mt-40 bg-white-800 rounded-lg ml-64">
-              {userRole.toLowerCase() === "admin" ? (
-                <Inventory userRole={userRole} />
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16">
-                  {loading ? (
-                    <p className="text-center text-gray-400">Loading products...</p>
-                  ) : filteredProducts.length > 0 ? (
-                    filteredProducts.map((prod) => (
-                      <ProductCard
-                        key={prod.id}
-                        id={prod.id}
-                        image={`${API_URL}/assets/${prod.image}`} // Ensure correct image path
-                        supplier={prod.supplier}
-                        name={prod.name}
-                        price={prod.price}
-                        stock={prod.stock}
-                        onUpdate={openStockModal} // Open stock modal on update
-                        onViewDetails={openDetailsModal} // Open details modal on view details
-                        userRole={userRole} // Pass userRole to ProductCard
-                      />
-                    ))
-                  ) : (
-                    <p className="text-center text-gray-400">No products available.</p>
-                  )}
-                </div>
-              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16">
+                {loading ? (
+                  <p className="text-center text-gray-400">Loading products...</p>
+                ) : filteredProducts.length > 0 ? (
+                  filteredProducts.map((prod) => (
+                    <ProductCard
+                      key={prod.id}
+                      id={prod.id}
+                      image={`${API_URL}/assets/${prod.image}`}
+                      supplier={prod.supplier}
+                      name={prod.name}
+                      price={prod.price}
+                      stock={prod.stock}
+                      onUpdate={openStockModal}
+                      onViewDetails={openDetailsModal}
+                      userRole={userRole}
+                    />
+                  ))
+                ) : (
+                  <p className="text-center text-gray-400">No products available.</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Modals */}
       {selectedProduct && (
         <StockModal
           isOpen={isStockModalOpen}
