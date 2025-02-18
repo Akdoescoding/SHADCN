@@ -93,6 +93,8 @@ const App = () => {
       await fetch(`${API_URL}/logout`, { method: "POST", credentials: "include" });
       setIsAuthenticated(false);
       setUserRole(null);
+      setProducts([]);
+      setFilteredProducts([]);
       localStorage.removeItem("token");
       localStorage.removeItem("role");
     } catch (error) {
@@ -102,7 +104,7 @@ const App = () => {
 
   // Handle Stock Update
   const handleUpdateStock = async (productId, newStock) => {
-    if (userRole !== "admin") {
+    if (userRole.toLowerCase() !== "admin") {
       alert("Only admin users can update stock.");
       return;
     }
@@ -182,7 +184,7 @@ const App = () => {
 
             {/* Main Content Area */}
             <div className="flex-grow p-6 mt-40 bg-white-800 rounded-lg ml-64">
-              {userRole === "admin" ? (
+              {userRole.toLowerCase() === "admin" ? (
                 <Inventory userRole={userRole} />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16">
@@ -200,6 +202,7 @@ const App = () => {
                         stock={prod.stock}
                         onUpdate={openStockModal} // Open stock modal on update
                         onViewDetails={openDetailsModal} // Open details modal on view details
+                        userRole={userRole} // Pass userRole to ProductCard
                       />
                     ))
                   ) : (
