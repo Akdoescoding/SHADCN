@@ -175,11 +175,11 @@ const App = () => {
             />
 
             {/* Main Content Area */}
-            <div className="flex-grow p-6 mt-16 bg-white-800 rounded-lg ml-64">
+            <div className="flex-grow p-6 mt-40 bg-white-800 rounded-lg ml-64">
               {userRole === "admin" ? (
                 <Inventory userRole={userRole} />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-16">
                   {loading ? (
                     <p className="text-center text-gray-400">Loading products...</p>
                   ) : filteredProducts.length > 0 ? (

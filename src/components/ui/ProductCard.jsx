@@ -1,15 +1,8 @@
 import React from "react";
 
-const ProductCard = ({ id, name, supplier, price, stock, image, onUpdate, onViewDetails }) => {
+const ProductCard = ({ id, name, supplier, price, stock, onUpdate, onViewDetails }) => {
   return (
     <div className="bg-white shadow-lg rounded-lg p-4 w-72">
-      {/* Product Image */}
-      <img 
-        src={`http://127.0.0.1:5001/assets/${image}`}  // Fetch image from Flask API
-        alt={name} 
-        className="w-full h-64 object-cover rounded-lg"
-      />
-
       {/* Product Details */}
       <div className="mt-4">
         <h2 className="text-black font-bold uppercase">{supplier}</h2>
