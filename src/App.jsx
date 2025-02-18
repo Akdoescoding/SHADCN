@@ -7,7 +7,7 @@ import Sidebar from "./components/ui/Sidebar";
 import ProductCard from "./components/ui/ProductCard";
 import Inventory from "./components/ui/Inventory";
 import StockModal from "./components/ui/StockModal";
-import ProductDetailsModal from "./components/ui/ProductDetailsModal"; // Ensure this import is correct
+import ProductDetailsModal from "./components/ui/ProductDetailsModal";
 
 const API_URL = "http://127.0.0.1:5001"; // Centralized API URL
 
@@ -53,6 +53,7 @@ const App = () => {
       const data = await response.json();
       setProducts(data);
       setFilteredProducts(data); // Initially, all products are displayed
+      console.log("✅ Products fetched successfully:", data);  // Debugging
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
@@ -101,6 +102,11 @@ const App = () => {
 
   // Handle Stock Update
   const handleUpdateStock = async (productId, newStock) => {
+    if (userRole !== "admin") {
+      alert("Only admin users can update stock.");
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/product/${productId}`, {
         method: "PUT",
@@ -156,9 +162,9 @@ const App = () => {
     <div className="min-h-screen bg-white text-black">
       {!isAuthenticated ? (
         isRegistering ? (
-          <Register onRegister={() => setIsRegistering(false)} />
+          <Register switchToLogin={() => setIsRegistering(false)} />
         ) : (
-          <Login onLogin={() => setIsAuthenticated(true)} />
+          <Login onLogin={() => setIsAuthenticated(true)} switchToRegister={() => setIsRegistering(true)} />
         )
       ) : (
         <div className="flex flex-col min-h-screen">

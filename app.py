@@ -22,9 +22,17 @@ jwt = JWTManager(app)
 # Fix CORS Issues (Allow Frontend to Access API)
 CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
 
+# User Model (Using `user` Table)
+class User(db.Model):
+    __tablename__ = 'user'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(150), nullable=False)
+    role = db.Column(db.String(50), nullable=False)
+
 # Product Model (Using `product` Table)
 class Product(db.Model):
-    __tablename__ = 'product'  
+    __tablename__ = 'product'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(150), unique=True, nullable=False)
     supplier = db.Column(db.String(150), nullable=False)
@@ -48,6 +56,7 @@ def serve_assets(filename):
     except Exception:
         return jsonify({"error": "Image not found"}), 404
 
+# Fetch All Products
 @app.route("/product", methods=["GET"])
 def get_products():
     """ Fetch all products from the database. """
@@ -64,6 +73,7 @@ def get_products():
             "stock": p.stock,
             "image": p.image or "default.png"
         } for p in products]
+        print("✅ Products fetched successfully:", products_list)  # Debugging
         return jsonify(products_list), 200
     except Exception as e:
         print("❌ Error fetching products:", str(e))  # Debugging
@@ -132,6 +142,45 @@ def delete_product(product_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": "Error deleting product", "error": str(e)}), 500
+
+# User Registration
+@app.route("/register", methods=["POST"])
+def register():
+    try:
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
+        role = data.get("role", "user")  # Default role is "user"
+
+        if not username or not password:
+            return jsonify({"message": "Username and password are required"}), 400
+
+        hashed_password = bcrypt.generate_password_hash(password).decode("utf-8")
+        new_user = User(username=username, password=hashed_password, role=role)
+
+        db.session.add(new_user)
+        db.session.commit()
+        return jsonify({"message": "User registered successfully!"}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error registering user", "error": str(e)}), 500
+
+# User Login
+@app.route("/login", methods=["POST"])
+def login():
+    try:
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
+
+        user = User.query.filter_by(username=username).first()
+        if user and bcrypt.check_password_hash(user.password, password):
+            access_token = create_access_token(identity={"username": user.username, "role": user.role})
+            return jsonify({"token": access_token}), 200
+        else:
+            return jsonify({"message": "Invalid username or password"}), 401
+    except Exception as e:
+        return jsonify({"message": "Error logging in", "error": str(e)}), 500
 
 # Home Route
 @app.route("/")

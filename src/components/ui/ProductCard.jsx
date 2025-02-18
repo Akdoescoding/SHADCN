@@ -1,34 +1,27 @@
 import React from "react";
 
-const ProductCard = ({ id, name, supplier, price, stock, onUpdate, onViewDetails }) => {
+const ProductCard = ({ id, image, supplier, name, price, stock, onUpdate, onViewDetails, userRole }) => {
   return (
-    <div className="bg-white shadow-lg rounded-lg p-4 w-72">
-      {/* Product Details */}
+    <div className="bg-white p-4 rounded-lg shadow-md">
+      <img src={image} alt={name} className="w-full h-48 object-cover rounded-md" />
       <div className="mt-4">
-        <h2 className="text-black font-bold uppercase">{supplier}</h2>
-        <p className="text-gray-700 text-lg">{name}</p>
-        <p className="text-black font-semibold text-xl">£{price}</p>
-
-        {/* Stock Status */}
-        <p className={`mt-2 text-md font-semibold ${stock < 5 ? "text-red-500" : "text-green-600"}`}>
-          {stock < 5 ? "Low Stock" : "In Stock"}
-        </p>
-
-        {/* Buttons */}
-        <div className="flex justify-between mt-4">
-          <button 
+        <h3 className="text-lg font-bold">{name}</h3>
+        <p className="text-gray-600">Supplier: {supplier}</p>
+        <p className="text-gray-600">Price: £{price.toFixed(2)}</p> {/* Display price in pounds */}
+        <button
+          className="mt-2 bg-blue-500 text-white py-1 px-4 rounded-md hover:bg-blue-600"
+          onClick={() => onViewDetails(id)}
+        >
+          View Details
+        </button>
+        {userRole === "admin" && (
+          <button
+            className="mt-2 bg-green-500 text-white py-1 px-4 rounded-md hover:bg-green-600 ml-2"
             onClick={() => onUpdate(id)}
-            className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-900"
           >
             Update Stock
           </button>
-          <button 
-            onClick={() => onViewDetails(id)}
-            className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-900"
-          >
-            View Details
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );
