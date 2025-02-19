@@ -31,7 +31,7 @@ const App = () => {
   const [selectedSuppliers, setSelectedSuppliers] = useState([]);
   const [selectedAvailability, setSelectedAvailability] = useState("");
 
-  // Fetch Products & Persist Authentication
+  // On app load, check for stored token and role
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedRole = localStorage.getItem("role");
@@ -39,7 +39,7 @@ const App = () => {
     if (token && storedRole) {
       setIsAuthenticated(true);
       setUserRole(storedRole);
-      console.log("User Role:", storedRole); // Debugging
+      console.log("User Role from storage:", storedRole); // Debugging
     }
 
     fetchProducts();
@@ -48,9 +48,15 @@ const App = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
+      // ❗ INCLUDE JWT TOKEN FOR GET /product
+      const token = localStorage.getItem("token");
       const response = await fetch(`${API_URL}/product`, {
         method: "GET",
         credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // <--- pass the token
+        }
       });
       if (!response.ok) throw new Error("Failed to fetch products");
 
@@ -94,7 +100,7 @@ const App = () => {
     console.log("Filtered Products:", filtered); // Debugging
   }, [selectedSort, selectedSuppliers, selectedAvailability, products]);
 
-  // Handle Logout
+  // Handle Logout: remove token and role from storage
   const handleLogout = async () => {
     try {
       await fetch(`${API_URL}/logout`, { method: "POST", credentials: "include" });
@@ -117,9 +123,14 @@ const App = () => {
     }
 
     try {
+      // ❗ INCLUDE JWT TOKEN FOR PUT /product/:id
+      const token = localStorage.getItem("token");
       const response = await fetch(`${API_URL}/product/${productId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // <--- pass the token
+        },
         credentials: "include",
         body: JSON.stringify({ stock: newStock }),
       });
@@ -167,7 +178,7 @@ const App = () => {
     setIsDetailsModalOpen(false);
   };
 
-  // Called by Login component after a successful login
+  // Called by Login component after a successful login.
   const handleLogin = (role) => {
     setIsAuthenticated(true);
     setUserRole(role);
@@ -175,7 +186,6 @@ const App = () => {
   };
 
   return (
-    // Remove "bg-white" here so we don't force the entire app to be white
     <div className="min-h-screen">
       {!isAuthenticated ? (
         // If not authenticated, show either Register or Login

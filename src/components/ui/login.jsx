@@ -1,24 +1,47 @@
+// src/components/ui/Login.jsx
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function Login({ onLogin, switchToRegister }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulate login
-    if (onLogin) {
-      onLogin("admin"); // or "user"
+    setError("");
+
+    try {
+      // Call the real Flask /login endpoint
+      const response = await fetch("http://127.0.0.1:5001/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.message || "Login failed");
+        return;
+      }
+
+      // data: { token: "JWT_TOKEN", role: "user"/"admin" }
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("role", data.role);
+
+      onLogin(data.role);
+      navigate("/home", { replace: true });
+    } catch (err) {
+      setError("❌ Error connecting to server.");
     }
   };
 
   return (
-  
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-      {/* Top heading */}
       <h1 className="text-5xl font-bold mb-8">WMG Invent</h1>
 
-      {/* Black login box with white text */}
       <div className="bg-black text-white w-80 p-8 rounded shadow">
         <h2 className="text-2xl font-bold mb-6">Login</h2>
         <form onSubmit={handleSubmit}>
@@ -51,6 +74,8 @@ function Login({ onLogin, switchToRegister }) {
             Login
           </button>
         </form>
+
+        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
 
         <p className="mt-4 text-sm">
           Don’t have an account?{" "}

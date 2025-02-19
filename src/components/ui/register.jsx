@@ -1,3 +1,4 @@
+// src/components/ui/Register.jsx
 import React, { useState } from "react";
 
 const Register = ({ switchToLogin }) => {
@@ -37,12 +38,9 @@ const Register = ({ switchToLogin }) => {
   };
 
   return (
-    
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-      {/* Heading at the top, same style as login */}
       <h1 className="text-5xl font-bold mb-8">WMG Invent</h1>
 
-      {/* Black "card" for the register form */}
       <div className="bg-black text-white w-80 p-8 rounded shadow">
         <h2 className="text-2xl font-bold mb-6">Register</h2>
 

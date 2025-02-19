@@ -57,12 +57,10 @@ with app.app_context():
     for prod in products:
         print(f" -> ID={prod.id}, name={prod.name}, stock={prod.stock}")
 
-
 # ---------------------------
 #        ROUTES
 # ---------------------------
 
-# Serve images from /public/assets
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):
     """
@@ -73,11 +71,12 @@ def serve_assets(filename):
     except Exception:
         return jsonify({"error": "Image not found"}), 404
 
-# Fetch all products (no auth needed)
+# ❗ MAKE THIS PROTECTED BY JWT:
 @app.route("/product", methods=["GET"])
+@jwt_required()
 def get_products():
     """
-    Returns a list of all products in the database.
+    Returns a list of all products in the database. (Requires JWT)
     """
     try:
         products = Product.query.all()
@@ -99,7 +98,6 @@ def get_products():
         print("❌ Error fetching products:", str(e))
         return jsonify({"message": "Error fetching products", "error": str(e)}), 500
 
-# Add product (Admin only)
 @app.route("/product", methods=["POST"])
 @jwt_required()
 def add_product():
@@ -107,9 +105,8 @@ def add_product():
     Adds a new product to the database (admin only).
     Expects JSON with keys: [name, supplier, price, stock, (image optional)]
     """
-    # Get all claims from the JWT
     claims = get_jwt()
-    role = claims.get("role")  # we stored 'role' in additional_claims
+    role = claims.get("role")
     if role != "admin":
         return jsonify({"message": "Unauthorized"}), 403
 
@@ -133,7 +130,6 @@ def add_product():
         db.session.rollback()
         return jsonify({"message": "Error adding product", "error": str(e)}), 500
 
-# Update product stock (Admin only)
 @app.route("/product/<int:product_id>", methods=["PUT"])
 @jwt_required()
 def update_stock(product_id):
@@ -168,7 +164,6 @@ def update_stock(product_id):
         print("❌ Error updating stock:", str(e))
         return jsonify({"message": "Error updating stock", "error": str(e)}), 500
 
-# Delete product (Admin only)
 @app.route("/product/<int:product_id>", methods=["DELETE"])
 @jwt_required()
 def delete_product(product_id):
@@ -192,7 +187,6 @@ def delete_product(product_id):
         db.session.rollback()
         return jsonify({"message": "Error deleting product", "error": str(e)}), 500
 
-# Register
 @app.route("/register", methods=["POST"])
 def register():
     """
@@ -216,7 +210,6 @@ def register():
         db.session.rollback()
         return jsonify({"message": "Error registering user", "error": str(e)}), 500
 
-# Login
 @app.route("/login", methods=["POST"])
 def login():
     """
@@ -230,8 +223,6 @@ def login():
 
         user = User.query.filter_by(username=username).first()
         if user and bcrypt.check_password_hash(user.password, password):
-            # Use a string (username) for identity
-            # Put role into additional_claims
             access_token = create_access_token(
                 identity=user.username,
                 additional_claims={"role": user.role}
@@ -242,7 +233,6 @@ def login():
     except Exception as e:
         return jsonify({"message": "Error logging in", "error": str(e)}), 500
 
-# Logout (optional)
 @app.route("/logout", methods=["POST"])
 def logout():
     """
@@ -253,7 +243,7 @@ def logout():
 @app.route("/")
 def home():
     """
-    A simple welcome route. 
+    A simple welcome route.
     """
     return jsonify({"message": "Welcome to the Inventory API. Use /product to fetch data."}), 200
 
