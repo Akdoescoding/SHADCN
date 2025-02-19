@@ -1,80 +1,125 @@
-/* General Reset */
+/* ------------------------- */
+/* General Reset & Fonts     */
+/* ------------------------- */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: "Poppins", sans-serif;
-  }
-  
-  /* Full Page Background */
-  body {
-    background-color: #ffffff;  /* Black background */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-  }
-  
-  /* Login Box */
-  .login-container {
-    background: #681717; /* Darker shade for depth */
-    padding: 2rem;
-    border-radius: 10px;
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1); /* Subtle glow */
-    text-align: center;
-    width: 350px;
-  }
-  
-  /* Login Heading */
-  .login-container h2 {
-    color: white;
-    margin-bottom: 20px;
-    font-size: 1.8rem;
-  }
-  
-  /* Input Fields */
-  .login-container input {
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0;
-    border: 1px solid #333;
-    border-radius: 5px;
-    background: #222;
-    color: white;
-  }
-  
-  /* Buttons */
-  .login-container button {
-    width: 100%;
-    padding: 12px;
-    background: white;
-    color: black;
-    font-size: 16px;
-    font-weight: bold;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-top: 15px;
-    transition: 0.3s;
-  }
-  
-  .login-container button:hover {
-    background: gray;
-  }
-  
-  /* Sign-Up Link */
-  .login-container p {
-    margin-top: 15px;
-    color: white;
-  }
-  
-  .login-container a {
-    color: lightblue;
-    text-decoration: none;
-    font-weight: bold;
-  }
-  
-  .login-container a:hover {
-    text-decoration: underline;
-  }
-  
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+/* Body Style */
+/* Remove full-page centering to allow scrolling on the Home page */
+body {
+  background-color: #ffffff;
+}
+
+/* ------------------------- */
+/* Login Page Styles         */
+/* ------------------------- */
+.login-container {
+  background: #681717; /* Darker shade for depth */
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1); /* Subtle glow */
+  text-align: center;
+  width: 350px;
+  margin: 2rem auto; /* Center on the page */
+}
+
+.login-container h2 {
+  color: white;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+}
+
+.login-container input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid #333;
+  border-radius: 5px;
+  background: #222;
+  color: white;
+}
+
+.login-container button {
+  width: 100%;
+  padding: 12px;
+  background: white;
+  color: black;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: 0.3s;
+}
+
+.login-container button:hover {
+  background: gray;
+}
+
+.login-container p {
+  margin-top: 15px;
+  color: white;
+}
+
+.login-container a {
+  color: lightblue;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.login-container a:hover {
+  text-decoration: underline;
+}
+
+/* ------------------------- */
+/* Home Page Styles          */
+/* ------------------------- */
+
+/* Container for the Home page content */
+.home-container {
+  padding: 2rem;
+}
+
+/* Grid to display category cards */
+.category-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center; /* Center the cards horizontally */
+}
+
+/* Individual category card */
+.category-card {
+  width: 200px;
+  height: 200px;
+  border: 3px solid #000; /* Thick black border */
+  border-radius: 20px;    /* Rounded corners */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff;
+  transition: transform 0.2s ease-in-out;
+}
+
+.category-card:hover {
+  transform: scale(1.05); /* Slight zoom on hover */
+}
+
+/* Category icon inside the card */
+.category-icon {
+  width: 80px;  /* Adjust as needed */
+  height: auto;
+  margin-bottom: 0.5rem;
+}
+
+/* Text label for the category */
+.category-text {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
