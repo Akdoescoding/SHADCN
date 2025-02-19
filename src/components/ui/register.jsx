@@ -37,50 +37,65 @@ const Register = ({ switchToLogin }) => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="bg-white text-black p-8 rounded-lg shadow-lg w-96">
-        <h2 className="text-2xl font-bold text-center">Register</h2>
+    
+    <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
+      {/* Heading at the top, same style as login */}
+      <h1 className="text-5xl font-bold mb-8">WMG Invent</h1>
+
+      {/* Black "card" for the register form */}
+      <div className="bg-black text-white w-80 p-8 rounded shadow">
+        <h2 className="text-2xl font-bold mb-6">Register</h2>
+
         <form onSubmit={handleRegister}>
-          <input
-            type="text"
-            placeholder="Username"
-            className="w-full p-2 mt-4 border border-gray-400 rounded-md"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full p-2 mt-4 border border-gray-400 rounded-md"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-
-          <select
-            className="w-full p-2 mt-4 border border-gray-400 rounded-md"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-          >
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-          </select>
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="Username"
+              className="w-full px-4 py-2 border border-gray-400 rounded bg-black text-white 
+                         placeholder-gray-300 focus:outline-none focus:border-gray-500"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <input
+              type="password"
+              placeholder="Password"
+              className="w-full px-4 py-2 border border-gray-400 rounded bg-black text-white 
+                         placeholder-gray-300 focus:outline-none focus:border-gray-500"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <div className="mb-6">
+            <select
+              className="w-full px-4 py-2 border border-gray-400 rounded bg-black text-white 
+                         focus:outline-none focus:border-gray-500"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            >
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
 
           <button
             type="submit"
-            className="w-full bg-blue-500 text-white font-bold p-2 mt-4 rounded-md hover:bg-blue-600"
+            className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
             disabled={loading}
           >
             {loading ? "Registering..." : "Register"}
           </button>
-
-          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         </form>
 
-        <p className="mt-4 text-center text-sm">
+        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+
+        <p className="mt-4 text-sm">
           Already have an account?{" "}
           <span
-            className="font-bold cursor-pointer text-blue-500 hover:underline"
+            className="font-bold cursor-pointer text-blue-400 hover:underline"
             onClick={switchToLogin}
           >
             Login

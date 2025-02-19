@@ -167,6 +167,7 @@ const App = () => {
     setIsDetailsModalOpen(false);
   };
 
+  // Called by Login component after a successful login
   const handleLogin = (role) => {
     setIsAuthenticated(true);
     setUserRole(role);
@@ -174,15 +175,18 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    // Remove "bg-white" here so we don't force the entire app to be white
+    <div className="min-h-screen">
       {!isAuthenticated ? (
+        // If not authenticated, show either Register or Login
         isRegistering ? (
           <Register switchToLogin={() => setIsRegistering(false)} />
         ) : (
           <Login onLogin={handleLogin} switchToRegister={() => setIsRegistering(true)} />
         )
       ) : (
-        <div className="flex flex-col min-h-screen">
+        // If authenticated, show navbar and main routes in a white container
+        <div className="flex flex-col min-h-screen bg-white text-black">
           <Navbar onLogout={handleLogout} />
           <Routes>
             {/* Redirect "/" to "/home" */}
@@ -210,14 +214,14 @@ const App = () => {
                           <ProductCard
                             key={prod.id}
                             id={prod.id}
-                            image={`${API_URL}/assets/${prod.image}`} // Ensure correct image path
+                            image={`${API_URL}/assets/${prod.image}`}
                             supplier={prod.supplier}
                             name={prod.name}
                             price={prod.price}
                             stock={prod.stock}
-                            onUpdate={openStockModal} // Open stock modal on update
-                            onViewDetails={openDetailsModal} // Open details modal on view details
-                            userRole={userRole} // Pass userRole to ProductCard
+                            onUpdate={openStockModal}
+                            onViewDetails={openDetailsModal}
+                            userRole={userRole}
                           />
                         ))
                       ) : (
@@ -229,19 +233,15 @@ const App = () => {
               }
             />
 
-            {/* Other Category: Shows "Loading products..." */}
+            {/* Other Category: Just a placeholder */}
             <Route
-  path="/other-category"
-  element={
-    <div className="flex items-center justify-center w-full min-h-[calc(100vh-80px)]">
-      <h1 className="text-4xl font-bold text-gray-500">Loading products...</h1>
-    </div>
-  }
-/>
-
-
-
-
+              path="/other-category"
+              element={
+                <div className="flex items-center justify-center w-full min-h-[calc(100vh-80px)]">
+                  <h1 className="text-4xl font-bold text-gray-500">Loading products...</h1>
+                </div>
+              }
+            />
 
             {/* Catch-all: redirect unknown routes to "/home" */}
             <Route path="*" element={<Navigate to="/home" replace />} />
@@ -249,6 +249,7 @@ const App = () => {
         </div>
       )}
 
+      {/* Modals */}
       {selectedProduct && (
         <StockModal
           isOpen={isStockModalOpen}

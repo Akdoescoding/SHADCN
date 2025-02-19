@@ -24,7 +24,7 @@ body {
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.1); /* Subtle glow */
   text-align: center;
   width: 350px;
-  margin: 2rem auto; /* Center on the page */
+  margin: 0 auto; /* Center on the page */
 }
 
 .login-container h2 {
