@@ -5,13 +5,20 @@ const StockModal = ({ isOpen, onClose, product, onUpdateStock }) => {
 
   if (!isOpen) return null;
 
-  const handleUpdateStock = () => {
+  const handleApplyStockChange = () => {
+    // new total stock
     const newStock = product.stock + parseInt(stockChange, 10);
-    if (newStock >= 0) {
-      onUpdateStock(product.id, newStock);
-    } else {
+
+    if (newStock < 0) {
       alert("Stock cannot be negative.");
+      return;
     }
+
+    // Actually update stock in the parent
+    onUpdateStock(product.id, newStock);
+
+    // Optionally close modal after
+    onClose();
   };
 
   return (
@@ -19,6 +26,7 @@ const StockModal = ({ isOpen, onClose, product, onUpdateStock }) => {
       <div className="bg-white p-6 rounded-lg shadow-lg">
         <h2 className="text-xl font-bold mb-4">Update Stock for {product.name}</h2>
         <p>Current Stock: {product.stock}</p>
+
         <div className="mt-4">
           <label className="block text-gray-700">Change Stock By:</label>
           <input
@@ -28,10 +36,11 @@ const StockModal = ({ isOpen, onClose, product, onUpdateStock }) => {
             className="w-full p-2 border rounded mt-2"
           />
         </div>
+
         <div className="flex space-x-4 mt-4">
           <button
             className="bg-green-500 text-white px-4 py-2 rounded"
-            onClick={handleUpdateStock}
+            onClick={handleApplyStockChange}
           >
             Apply
           </button>

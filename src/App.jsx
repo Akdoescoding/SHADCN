@@ -5,7 +5,6 @@ import Login from "./components/ui/Login";
 import Navbar from "./components/ui/Navbar";
 import Sidebar from "./components/ui/Sidebar";
 import ProductCard from "./components/ui/ProductCard";
-import Inventory from "./components/ui/Inventory";
 import StockModal from "./components/ui/StockModal";
 import ProductDetailsModal from "./components/ui/ProductDetailsModal";
 
@@ -18,16 +17,18 @@ const App = () => {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Modals
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
-  // Dropdown filter states: all empty by default
+  // Filters
   const [selectedSort, setSelectedSort] = useState("");
   const [selectedSuppliers, setSelectedSuppliers] = useState([]);
   const [selectedAvailability, setSelectedAvailability] = useState("");
 
-  // On mount, check localStorage for token & role, then fetch products
+  // On mount, check localStorage for token & role
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedRole = localStorage.getItem("role");
@@ -44,15 +45,16 @@ const App = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
+      // GET /product is not admin-protected, so no need for token
       const response = await fetch(`${API_URL}/product`, {
         method: "GET",
-        credentials: "include",
+        headers: { "Content-Type": "application/json" },
       });
       if (!response.ok) throw new Error("Failed to fetch products");
 
       const data = await response.json();
       setProducts(data);
-      setFilteredProducts(data); // Start with all products
+      setFilteredProducts(data);
       console.log("✅ Products fetched successfully:", data);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -61,25 +63,22 @@ const App = () => {
     }
   };
 
-  // Filter products whenever user changes sort/supplier/availability
+  // Filter whenever sort/suppliers/availability changes
   useEffect(() => {
     let filtered = [...products];
 
-    // Sort
     if (selectedSort === "asc") {
       filtered.sort((a, b) => a.stock - b.stock);
     } else if (selectedSort === "desc") {
       filtered.sort((a, b) => b.stock - a.stock);
     }
 
-    // Filter by supplier
     if (selectedSuppliers.length > 0) {
       filtered = filtered.filter((prod) =>
         selectedSuppliers.includes(prod.supplier)
       );
     }
 
-    // Filter by availability
     if (selectedAvailability === "in_stock") {
       filtered = filtered.filter((prod) => prod.stock > 0);
     } else if (selectedAvailability === "out_of_stock") {
@@ -93,11 +92,8 @@ const App = () => {
   // Logout
   const handleLogout = async () => {
     try {
-      // Optional: call an API logout route
-      await fetch(`${API_URL}/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
+      // Not protected, so no token needed
+      await fetch(`${API_URL}/logout`, { method: "POST" });
       setIsAuthenticated(false);
       setUserRole(null);
       setProducts([]);
@@ -109,24 +105,32 @@ const App = () => {
     }
   };
 
-  // Called by the StockModal after user enters new stock
+  // Actual PUT request to update stock (admin only)
   const handleUpdateStock = async (productId, newStock) => {
-    // Double-check admin in frontend (the backend also enforces it)
     if (userRole?.toLowerCase() !== "admin") {
       alert("Only admin users can update stock.");
+      return;
+    }
+
+    // Retrieve token from localStorage
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("No token found, please login again.");
       return;
     }
 
     try {
       const response = await fetch(`${API_URL}/product/${productId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          // Bearer token
+          "Authorization": `Bearer ${token}`,
+        },
         body: JSON.stringify({ stock: newStock }),
       });
 
       if (response.ok) {
-        // Update state
         setProducts((prev) =>
           prev.map((p) => (p.id === productId ? { ...p, stock: newStock } : p))
         );
@@ -143,15 +147,30 @@ const App = () => {
     }
   };
 
-  // Open/Close modals
+  // Open the "Update Stock" modal
   const openStockModal = (productId) => {
-    const product = products.find((prod) => prod.id === productId);
+    console.log("openStockModal called with productId:", productId);
+    const product = products.find((p) => p.id === productId);
+
+    if (!product) {
+      alert(`No product found with ID ${productId}`);
+      return;
+    }
+
     setSelectedProduct(product);
     setIsStockModalOpen(true);
   };
 
+  // Open the "View Details" modal
   const openDetailsModal = (productId) => {
-    const product = products.find((prod) => prod.id === productId);
+    console.log("openDetailsModal called with productId:", productId);
+    const product = products.find((p) => p.id === productId);
+
+    if (!product) {
+      alert(`No product found with ID ${productId}`);
+      return;
+    }
+
     setSelectedProduct(product);
     setIsDetailsModalOpen(true);
   };
@@ -166,7 +185,7 @@ const App = () => {
     setIsDetailsModalOpen(false);
   };
 
-  // Called by Login.jsx after successful login
+  // Called after a successful login
   const handleLogin = (role) => {
     setIsAuthenticated(true);
     setUserRole(role);
@@ -175,7 +194,6 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-white text-black">
-      {/* If not logged in, show Register or Login */}
       {!isAuthenticated ? (
         isRegistering ? (
           <Register switchToLogin={() => setIsRegistering(false)} />
@@ -183,12 +201,10 @@ const App = () => {
           <Login onLogin={handleLogin} switchToRegister={() => setIsRegistering(true)} />
         )
       ) : (
-        // Otherwise, show main app
         <div className="flex flex-col min-h-screen">
           <Navbar onLogout={handleLogout} />
 
           <div className="flex">
-            {/* Optional Sidebar with filters */}
             <Sidebar
               setSortOrder={setSelectedSort}
               setFilterBySupplier={setSelectedSuppliers}
@@ -209,9 +225,9 @@ const App = () => {
                       name={prod.name}
                       price={prod.price}
                       stock={prod.stock}
-                      onUpdate={openStockModal}
-                      onViewDetails={openDetailsModal}
                       userRole={userRole}
+                      onViewDetails={openDetailsModal}
+                      onUpdate={openStockModal}
                     />
                   ))
                 ) : (
@@ -223,7 +239,6 @@ const App = () => {
         </div>
       )}
 
-      {/* Modals */}
       {selectedProduct && (
         <StockModal
           isOpen={isStockModalOpen}

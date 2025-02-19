@@ -25,7 +25,7 @@ const Login = ({ onLogin, switchToRegister }) => {
         localStorage.setItem("token", data.token);
         localStorage.setItem("role", data.role);
 
-        // Tell App we're logged in
+        // Let App know we logged in
         onLogin(data.role);
       } else {
         setError(data.message || "Login failed");
