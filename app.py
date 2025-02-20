@@ -71,7 +71,6 @@ def serve_assets(filename):
     except Exception:
         return jsonify({"error": "Image not found"}), 404
 
-# ❗ MAKE THIS PROTECTED BY JWT:
 @app.route("/product", methods=["GET"])
 @jwt_required()
 def get_products():
@@ -97,38 +96,6 @@ def get_products():
     except Exception as e:
         print("❌ Error fetching products:", str(e))
         return jsonify({"message": "Error fetching products", "error": str(e)}), 500
-
-@app.route("/product", methods=["POST"])
-@jwt_required()
-def add_product():
-    """
-    Adds a new product to the database (admin only).
-    Expects JSON with keys: [name, supplier, price, stock, (image optional)]
-    """
-    claims = get_jwt()
-    role = claims.get("role")
-    if role != "admin":
-        return jsonify({"message": "Unauthorized"}), 403
-
-    try:
-        data = request.get_json()
-        if not all(k in data for k in ["name", "supplier", "price", "stock"]):
-            return jsonify({"error": "Missing required fields"}), 400
-
-        new_product = Product(
-            name=data["name"],
-            supplier=data["supplier"],
-            price=float(data["price"]),
-            stock=int(data["stock"]),
-            image=data.get("image", "default.png")
-        )
-
-        db.session.add(new_product)
-        db.session.commit()
-        return jsonify({"message": "Product added successfully!"}), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"message": "Error adding product", "error": str(e)}), 500
 
 @app.route("/product/<int:product_id>", methods=["PUT"])
 @jwt_required()
@@ -164,29 +131,6 @@ def update_stock(product_id):
         print("❌ Error updating stock:", str(e))
         return jsonify({"message": "Error updating stock", "error": str(e)}), 500
 
-@app.route("/product/<int:product_id>", methods=["DELETE"])
-@jwt_required()
-def delete_product(product_id):
-    """
-    Deletes a product from the database (admin only).
-    """
-    claims = get_jwt()
-    role = claims.get("role")
-    if role != "admin":
-        return jsonify({"message": "Unauthorized"}), 403
-
-    try:
-        product = Product.query.get(product_id)
-        if not product:
-            return jsonify({"message": "Product not found"}), 404
-
-        db.session.delete(product)
-        db.session.commit()
-        return jsonify({"message": "Product deleted successfully!"}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"message": "Error deleting product", "error": str(e)}), 500
-
 @app.route("/register", methods=["POST"])
 def register():
     """
@@ -214,7 +158,7 @@ def register():
 def login():
     """
     Logs in a user. Expects JSON with keys: [username, password].
-    Returns a JWT token and the user's role if successful.
+    Then returns a JWT token and the user's role if successful.
     """
     try:
         data = request.get_json()
