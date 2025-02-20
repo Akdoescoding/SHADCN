@@ -39,7 +39,7 @@ const App = () => {
     if (token && storedRole) {
       setIsAuthenticated(true);
       setUserRole(storedRole);
-      console.log("User Role from storage:", storedRole); // Debugging
+      console.log("User Role from storage:", storedRole);
     }
 
     fetchProducts();
@@ -48,14 +48,14 @@ const App = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // ❗ INCLUDE JWT TOKEN FOR GET /product
+      // INCLUDE JWT TOKEN FOR GET /product
       const token = localStorage.getItem("token");
       const response = await fetch(`${API_URL}/product`, {
         method: "GET",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // <--- pass the token
+          "Authorization": `Bearer ${token}`
         }
       });
       if (!response.ok) throw new Error("Failed to fetch products");
@@ -63,7 +63,7 @@ const App = () => {
       const data = await response.json();
       setProducts(data);
       setFilteredProducts(data); // Initially, all products are displayed
-      console.log("✅ Products fetched successfully:", data); // Debugging
+      console.log("✅ Products fetched successfully:", data);
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
@@ -75,21 +75,18 @@ const App = () => {
   useEffect(() => {
     let filtered = [...products];
 
-    // Apply Sorting
     if (selectedSort === "asc") {
       filtered.sort((a, b) => a.stock - b.stock);
     } else if (selectedSort === "desc") {
       filtered.sort((a, b) => b.stock - a.stock);
     }
 
-    // Filter by Supplier
     if (selectedSuppliers.length > 0) {
       filtered = filtered.filter((prod) =>
         selectedSuppliers.includes(prod.supplier)
       );
     }
 
-    // Filter by Availability
     if (selectedAvailability === "in_stock") {
       filtered = filtered.filter((prod) => prod.stock > 0);
     } else if (selectedAvailability === "out_of_stock") {
@@ -97,7 +94,7 @@ const App = () => {
     }
 
     setFilteredProducts(filtered);
-    console.log("Filtered Products:", filtered); // Debugging
+    console.log("Filtered Products:", filtered);
   }, [selectedSort, selectedSuppliers, selectedAvailability, products]);
 
   // Handle Logout: remove token and role from storage
@@ -123,13 +120,13 @@ const App = () => {
     }
 
     try {
-      // ❗ INCLUDE JWT TOKEN FOR PUT /product/:id
+      // INCLUDE JWT TOKEN FOR PUT /product/:id
       const token = localStorage.getItem("token");
       const response = await fetch(`${API_URL}/product/${productId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // <--- pass the token
+          "Authorization": `Bearer ${token}`
         },
         credentials: "include",
         body: JSON.stringify({ stock: newStock }),
@@ -182,30 +179,23 @@ const App = () => {
   const handleLogin = (role) => {
     setIsAuthenticated(true);
     setUserRole(role);
-    console.log("Logged in as:", role); // Debugging
+    console.log("Logged in as:", role);
   };
 
   return (
     <div className="min-h-screen">
       {!isAuthenticated ? (
-        // If not authenticated, show either Register or Login
         isRegistering ? (
           <Register switchToLogin={() => setIsRegistering(false)} />
         ) : (
           <Login onLogin={handleLogin} switchToRegister={() => setIsRegistering(true)} />
         )
       ) : (
-        // If authenticated, show navbar and main routes in a white container
         <div className="flex flex-col min-h-screen bg-white text-black">
           <Navbar onLogout={handleLogout} />
           <Routes>
-            {/* Redirect "/" to "/home" */}
             <Route path="/" element={<Navigate to="/home" replace />} />
-
-            {/* Home Page */}
             <Route path="/home" element={<Home />} />
-
-            {/* Clothing Inventory Management Page */}
             <Route
               path="/clothing"
               element={
@@ -242,8 +232,6 @@ const App = () => {
                 </div>
               }
             />
-
-            {/* Other Category: Just a placeholder */}
             <Route
               path="/other-category"
               element={
@@ -252,14 +240,11 @@ const App = () => {
                 </div>
               }
             />
-
-            {/* Catch-all: redirect unknown routes to "/home" */}
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </div>
       )}
 
-      {/* Modals */}
       {selectedProduct && (
         <StockModal
           isOpen={isStockModalOpen}

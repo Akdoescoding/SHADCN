@@ -5,9 +5,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import (
-    JWTManager, create_access_token, jwt_required,
-    get_jwt, get_jwt_identity
+    JWTManager, create_access_token, create_refresh_token,
+    jwt_required, get_jwt, get_jwt_identity
 )
+from datetime import timedelta
 
 app = Flask(__name__)
 
@@ -16,12 +17,21 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:Waves1234_@localho
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_SECRET_KEY"] = "supersecretkey"
 
+# Set token expirations: access token lasts 15 minutes; refresh token lasts 1 day
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=15)
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=1)
+
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
-# Allow frontend on localhost:5173 to call this API
-CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+# Optional: Callback for expired tokens
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return jsonify({"msg": "Token has expired"}), 401
+
+# Allow frontend on localhost:5176 to call this API
+CORS(app, resources={r"/*": {"origins": "http://localhost:5176"}}, supports_credentials=True)
 
 # ---------------------------
 #       DATABASE MODELS
@@ -63,20 +73,17 @@ with app.app_context():
 
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):
-    """
-    Serves static image files from public/assets folder.
-    """
+    """Serves static image files from public/assets folder."""
     try:
         return send_from_directory('public/assets', filename)
     except Exception:
         return jsonify({"error": "Image not found"}), 404
 
+# Protected: GET /product (requires a valid access token)
 @app.route("/product", methods=["GET"])
 @jwt_required()
 def get_products():
-    """
-    Returns a list of all products in the database. (Requires JWT)
-    """
+    """Returns a list of all products in the database."""
     try:
         products = Product.query.all()
         if not products:
@@ -97,13 +104,11 @@ def get_products():
         print("❌ Error fetching products:", str(e))
         return jsonify({"message": "Error fetching products", "error": str(e)}), 500
 
+# Protected: PUT /product/<id> (admin only)
 @app.route("/product/<int:product_id>", methods=["PUT"])
 @jwt_required()
 def update_stock(product_id):
-    """
-    Updates the stock for a product (admin only).
-    Expects JSON with key: 'stock'.
-    """
+    """Updates the stock for a product (admin only). Expects JSON with key: 'stock'."""
     try:
         claims = get_jwt()
         role = claims.get("role")
@@ -131,11 +136,10 @@ def update_stock(product_id):
         print("❌ Error updating stock:", str(e))
         return jsonify({"message": "Error updating stock", "error": str(e)}), 500
 
+# Register
 @app.route("/register", methods=["POST"])
 def register():
-    """
-    Registers a new user. Expects JSON with keys: [username, password, role (optional)].
-    """
+    """Registers a new user. Expects JSON with keys: [username, password, role (optional)]."""
     try:
         data = request.get_json()
         username = data.get("username")
@@ -154,11 +158,12 @@ def register():
         db.session.rollback()
         return jsonify({"message": "Error registering user", "error": str(e)}), 500
 
+# Login: returns both Access and Refresh tokens
 @app.route("/login", methods=["POST"])
 def login():
     """
     Logs in a user. Expects JSON with keys: [username, password].
-    Then returns a JWT token and the user's role if successful.
+    Returns both an Access and Refresh token plus the user's role if successful.
     """
     try:
         data = request.get_json()
@@ -167,36 +172,63 @@ def login():
 
         user = User.query.filter_by(username=username).first()
         if user and bcrypt.check_password_hash(user.password, password):
+            # Create an access token using the global expiration (which here is 15 minutes)
             access_token = create_access_token(
                 identity=user.username,
-                additional_claims={"role": user.role}
+                additional_claims={"role": user.role},
+                expires_delta=timedelta(minutes=15)
             )
-            return jsonify({"token": access_token, "role": user.role}), 200
+            # Create a refresh token (expires in 1 day)
+            refresh_token = create_refresh_token(identity=user.username)
+
+            return jsonify({
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "role": user.role
+            }), 200
         else:
             return jsonify({"message": "Invalid username or password"}), 401
     except Exception as e:
         return jsonify({"message": "Error logging in", "error": str(e)}), 500
 
+# Refresh route: requires a valid refresh token
+@app.route("/refresh", methods=["POST"])
+@jwt_required(refresh=True)
+def refresh():
+    """
+    Refreshes the Access Token using the Refresh Token.
+    Send the refresh token in the Authorization header: Bearer <refresh_token>
+    """
+    try:
+        current_user = get_jwt_identity()
+        claims = get_jwt()  # The refresh token also has 'role'
+        new_access_token = create_access_token(
+            identity=current_user,
+            additional_claims={"role": claims["role"]},
+            expires_delta=timedelta(minutes=15)
+        )
+        return jsonify({"access_token": new_access_token}), 200
+    except Exception as e:
+        return jsonify({"message": "Error refreshing token", "error": str(e)}), 500
+
+# Logout
 @app.route("/logout", methods=["POST"])
 def logout():
     """
-    Simple logout route. If you're using token-based auth, you just remove the token on the frontend.
+    Simple logout route. If you're using token-based auth,
+    you just remove the tokens on the frontend.
     """
     return jsonify({"message": "Logged out"}), 200
 
 @app.route("/")
 def home():
-    """
-    A simple welcome route.
-    """
+    """A simple welcome route."""
     return jsonify({"message": "Welcome to the Inventory API. Use /product to fetch data."}), 200
 
 @app.after_request
 def add_cors_headers(response):
-    """
-    Ensure correct CORS headers for cross-origin requests from localhost:5173.
-    """
-    response.headers["Access-Control-Allow-Origin"] = "http://localhost:5173"
+    """Ensure correct CORS headers for cross-origin requests from localhost:5176."""
+    response.headers["Access-Control-Allow-Origin"] = "http://localhost:5176"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"

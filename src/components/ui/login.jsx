@@ -13,7 +13,6 @@ function Login({ onLogin, switchToRegister }) {
     setError("");
 
     try {
-      // Call the real Flask /login endpoint
       const response = await fetch("http://127.0.0.1:5001/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -27,11 +26,18 @@ function Login({ onLogin, switchToRegister }) {
         return;
       }
 
-      // data: { token: "JWT_TOKEN", role: "user"/"admin" }
-      localStorage.setItem("token", data.token);
+      // The server returns { "access_token": "...", "refresh_token": "...", "role": "..." }
+      // Store 'access_token' (NOT 'token')
+      localStorage.setItem("token", data.access_token); 
       localStorage.setItem("role", data.role);
 
+      // Optionally, store refresh_token if you plan to use it:
+      // localStorage.setItem("refresh_token", data.refresh_token);
+
+      // Update the App state
       onLogin(data.role);
+
+      // Redirect to home
       navigate("/home", { replace: true });
     } catch (err) {
       setError("❌ Error connecting to server.");
