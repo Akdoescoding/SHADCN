@@ -30,8 +30,8 @@ jwt = JWTManager(app)
 def expired_token_callback(jwt_header, jwt_payload):
     return jsonify({"msg": "Token has expired"}), 401
 
-# Allow frontend on localhost:5176 to call this API
-CORS(app, resources={r"/*": {"origins": "http://localhost:5176"}}, supports_credentials=True)
+# Allow frontend on localhost:5174 to call this API (updated from 5176)
+CORS(app, resources={r"/*": {"origins": "http://localhost:5174"}}, supports_credentials=True)
 
 # ---------------------------
 #       DATABASE MODELS
@@ -104,6 +104,47 @@ def get_products():
         print("❌ Error fetching products:", str(e))
         return jsonify({"message": "Error fetching products", "error": str(e)}), 500
 
+# ---------------------------
+# NEW: POST /product (admin only)
+# ---------------------------
+@app.route("/product", methods=["POST"])
+@jwt_required()
+def create_product():
+    """Create a new product (admin only)."""
+    try:
+        claims = get_jwt()
+        role = claims.get("role")
+        if role != "admin":
+            print("❌ Unauthorized access attempt by user:", get_jwt_identity())
+            return jsonify({"message": "Unauthorized"}), 403
+
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "Missing product data"}), 400
+
+        name = data.get("name")
+        supplier = data.get("supplier")
+        price = data.get("price")
+        stock = data.get("stock")
+
+        if not all([name, supplier, price is not None, stock is not None]):
+            return jsonify({"message": "Missing required fields"}), 400
+
+        new_product = Product(
+            name=name,
+            supplier=supplier,
+            price=float(price),
+            stock=int(stock)
+        )
+        db.session.add(new_product)
+        db.session.commit()
+
+        return jsonify({"message": "Product inserted successfully!", "product_id": new_product.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        print("❌ Error inserting product:", str(e))
+        return jsonify({"message": "Error inserting product", "error": str(e)}), 500
+
 # Protected: PUT /product/<id> (admin only)
 @app.route("/product/<int:product_id>", methods=["PUT"])
 @jwt_required()
@@ -135,6 +176,28 @@ def update_stock(product_id):
     except Exception as e:
         print("❌ Error updating stock:", str(e))
         return jsonify({"message": "Error updating stock", "error": str(e)}), 500
+
+# Protected: DELETE /product/<id> (admin only)
+@app.route("/product/<int:product_id>", methods=["DELETE"])
+@jwt_required()
+def delete_product(product_id):
+    """Delete a product (admin only)."""
+    try:
+        claims = get_jwt()
+        role = claims.get("role")
+        if role != "admin":
+            return jsonify({"message": "Unauthorized"}), 403
+
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({"message": "Product not found"}), 404
+
+        db.session.delete(product)
+        db.session.commit()
+        return jsonify({"message": "Product deleted successfully!"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error deleting product", "error": str(e)}), 500
 
 # Register
 @app.route("/register", methods=["POST"])
@@ -172,15 +235,12 @@ def login():
 
         user = User.query.filter_by(username=username).first()
         if user and bcrypt.check_password_hash(user.password, password):
-            # Create an access token using the global expiration (which here is 15 minutes)
             access_token = create_access_token(
                 identity=user.username,
                 additional_claims={"role": user.role},
                 expires_delta=timedelta(minutes=15)
             )
-            # Create a refresh token (expires in 1 day)
             refresh_token = create_refresh_token(identity=user.username)
-
             return jsonify({
                 "access_token": access_token,
                 "refresh_token": refresh_token,
@@ -227,8 +287,8 @@ def home():
 
 @app.after_request
 def add_cors_headers(response):
-    """Ensure correct CORS headers for cross-origin requests from localhost:5176."""
-    response.headers["Access-Control-Allow-Origin"] = "http://localhost:5176"
+    """Ensure correct CORS headers for cross-origin requests from localhost:5174."""
+    response.headers["Access-Control-Allow-Origin"] = "http://localhost:5174"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"

@@ -1,4 +1,3 @@
-// src/components/ui/App.jsx
 import "./index.css";
 import React, { useState, useEffect } from "react";
 import { Route, Routes, Navigate } from "react-router-dom";
@@ -11,9 +10,11 @@ import ProductCard from "./components/ui/ProductCard";
 import Inventory from "./components/ui/Inventory";
 import StockModal from "./components/ui/StockModal";
 import ProductDetailsModal from "./components/ui/ProductDetailsModal";
-import Home from "./components/ui/Home"; // Import Home component
+import Home from "./components/ui/Home";
+// Modal for inserting a new product (only admin users)
+import AddProductModal from "./components/ui/AddProductModal";
 
-const API_URL = "http://127.0.0.1:5001"; // Centralized API URL
+const API_URL = "http://127.0.0.1:5001";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -26,12 +27,14 @@ const App = () => {
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
+  // New state for add product modal (insertion)
+  const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
+
   // Dropdown States
   const [selectedSort, setSelectedSort] = useState("");
   const [selectedSuppliers, setSelectedSuppliers] = useState([]);
   const [selectedAvailability, setSelectedAvailability] = useState("");
 
-  // On app load, check for stored token and role
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedRole = localStorage.getItem("role");
@@ -48,21 +51,19 @@ const App = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // INCLUDE JWT TOKEN FOR GET /product
       const token = localStorage.getItem("token");
       const response = await fetch(`${API_URL}/product`, {
         method: "GET",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (!response.ok) throw new Error("Failed to fetch products");
-
       const data = await response.json();
       setProducts(data);
-      setFilteredProducts(data); // Initially, all products are displayed
+      setFilteredProducts(data);
       console.log("✅ Products fetched successfully:", data);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -71,7 +72,7 @@ const App = () => {
     }
   };
 
-  // Filter Products Based on Dropdown Selections
+  // Filter products based on dropdown selections
   useEffect(() => {
     let filtered = [...products];
 
@@ -97,7 +98,6 @@ const App = () => {
     console.log("Filtered Products:", filtered);
   }, [selectedSort, selectedSuppliers, selectedAvailability, products]);
 
-  // Handle Logout: remove token and role from storage
   const handleLogout = async () => {
     try {
       await fetch(`${API_URL}/logout`, { method: "POST", credentials: "include" });
@@ -112,26 +112,23 @@ const App = () => {
     }
   };
 
-  // Handle Stock Update
+  // Update product stock (only admin)
   const handleUpdateStock = async (productId, newStock) => {
     if (userRole?.toLowerCase() !== "admin") {
       alert("Only admin users can update stock.");
       return;
     }
-
     try {
-      // INCLUDE JWT TOKEN FOR PUT /product/:id
       const token = localStorage.getItem("token");
       const response = await fetch(`${API_URL}/product/${productId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         credentials: "include",
         body: JSON.stringify({ stock: newStock }),
       });
-
       if (response.ok) {
         setProducts((prevProducts) =>
           prevProducts.map((prod) =>
@@ -153,6 +150,59 @@ const App = () => {
     }
   };
 
+  // Insert a new product (only admin)
+  const handleInsertProduct = async (productData) => {
+    try {
+      const token = localStorage.getItem("token");
+      console.log("Attempting to insert product:", productData);
+      const response = await fetch(`${API_URL}/product`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+        body: JSON.stringify(productData),
+      });
+      if (response.ok) {
+        fetchProducts();
+        alert("Product inserted successfully!");
+      } else {
+        const errorText = await response.text();
+        alert(`Failed to insert product: ${errorText}`);
+        console.error("Insert error:", errorText);
+      }
+    } catch (error) {
+      console.error("Error inserting product:", error);
+      alert("Error inserting product.");
+    }
+  };
+
+  // Delete a product (only admin)
+  const handleDeleteProduct = async (productId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/product/${productId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+      });
+      if (response.ok) {
+        fetchProducts();
+        alert("Product deleted successfully!");
+      } else {
+        alert("Failed to delete product.");
+      }
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert("Error deleting product.");
+    }
+  };
+
+  // Open modals
   const openStockModal = (productId) => {
     const product = products.find((prod) => prod.id === productId);
     setSelectedProduct(product);
@@ -165,6 +215,7 @@ const App = () => {
     setIsDetailsModalOpen(true);
   };
 
+  // Close modals
   const closeStockModal = () => {
     setSelectedProduct(null);
     setIsStockModalOpen(false);
@@ -175,7 +226,16 @@ const App = () => {
     setIsDetailsModalOpen(false);
   };
 
-  // Called by Login component after a successful login.
+  // Controls for add product modal (insertion)
+  const openAddProductModal = () => {
+    setIsAddProductModalOpen(true);
+  };
+
+  const closeAddProductModal = () => {
+    setIsAddProductModalOpen(false);
+  };
+
+  // Called by the Login component after a successful login.
   const handleLogin = (role) => {
     setIsAuthenticated(true);
     setUserRole(role);
@@ -219,8 +279,22 @@ const App = () => {
                             name={prod.name}
                             price={prod.price}
                             stock={prod.stock}
-                            onUpdate={openStockModal}
-                            onViewDetails={openDetailsModal}
+                            // For admin, pass the callback; for non-admin, pass undefined
+                            onViewDetails={
+                              userRole?.toLowerCase() === "admin"
+                                ? openDetailsModal
+                                : undefined
+                            }
+                            onUpdate={
+                              userRole?.toLowerCase() === "admin"
+                                ? openStockModal
+                                : undefined
+                            }
+                            onDelete={
+                              userRole?.toLowerCase() === "admin"
+                                ? () => handleDeleteProduct(prod.id)
+                                : undefined
+                            }
                             userRole={userRole}
                           />
                         ))
@@ -228,6 +302,19 @@ const App = () => {
                         <p className="text-center text-gray-400">No products available.</p>
                       )}
                     </div>
+
+                    {/* 
+                      "Add Product" button at the bottom,
+                      visible ONLY if userRole is admin.
+                    */}
+                    {userRole?.toLowerCase() === "admin" && (
+                      <button
+                        onClick={openAddProductModal}
+                        className="mt-8 px-4 py-2 bg-green-500 text-white rounded"
+                      >
+                        Add Product
+                      </button>
+                    )}
                   </div>
                 </div>
               }
@@ -245,6 +332,7 @@ const App = () => {
         </div>
       )}
 
+      {/* Stock Modal */}
       {selectedProduct && (
         <StockModal
           isOpen={isStockModalOpen}
@@ -253,11 +341,23 @@ const App = () => {
           onUpdateStock={handleUpdateStock}
         />
       )}
+
+      {/* Product Details Modal */}
       {selectedProduct && (
         <ProductDetailsModal
           isOpen={isDetailsModalOpen}
           onClose={closeDetailsModal}
           product={selectedProduct}
+        />
+      )}
+
+      {/* Add Product Modal (Admin Only) */}
+      {isAddProductModalOpen && (
+        <AddProductModal
+          isOpen={isAddProductModalOpen}
+          onClose={closeAddProductModal}
+          onInsertProduct={handleInsertProduct}
+          userRole={userRole}
         />
       )}
     </div>
